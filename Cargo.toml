@@ -1,0 +1,15 @@
+[package]
+name = "async-wg"
+version = "0.1.0"
+authors = ["jmjoy <918734043@qq.com>"]
+edition = "2018"
+description = "Async version WaitGroup for RUST."
+repository = "https://github.com/jmjoy/async-wg.git"
+license = "Unlicense"
+readme = "README.md"
+keywords = ["async", "future", "waitgroup"]
+
+[dependencies]
+
+[dev-dependencies]
+tokio = { version = "0.2.11", features = ["full"] }
