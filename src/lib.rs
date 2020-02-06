@@ -6,7 +6,7 @@
 //!
 //! ```rust
 //! #[tokio::main]
-//! async fn test_await() {
+//! async fn main() {
 //!     use async_wg::WaitGroup;
 //!
 //!     // Create a new wait group.
@@ -30,6 +30,17 @@
 //! }
 //! ```
 //!
+//! ## Benchmarks
+//!
+//! Simple benchmark comparison run on github actions.
+//!
+//! Code: [benchs/main.rs](https://github.com/jmjoy/async-wg/blob/master/benches/main.rs)
+//!
+//! ```text
+//! test bench_join_handle ... bench:      34,485 ns/iter (+/- 18,969)
+//! test bench_wait_group  ... bench:      36,916 ns/iter (+/- 7,555)
+//! ```
+//!
 //! ## License
 //!
 //! The Unlicense.
@@ -42,6 +53,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
 #[derive(Clone)]
+/// Enables multiple tasks to synchronize the beginning or end of some computation.
 pub struct WaitGroup {
     inner: Arc<Inner>,
 }
@@ -52,6 +64,13 @@ struct Inner {
 }
 
 impl WaitGroup {
+    /// Creates a new wait group and returns the single reference to it.
+    ///
+    /// # Examples
+    /// ```rust
+    /// use async_wg::WaitGroup;
+    /// let wg = WaitGroup::new();
+    /// ```
     pub fn new() -> WaitGroup {
         WaitGroup {
             inner: Arc::new(Inner {
@@ -61,15 +80,25 @@ impl WaitGroup {
         }
     }
 
+    /// Add count n.
+    ///
+    /// # Panic
+    /// 1. The argument `delta` must be a positive number (> 0).
+    /// 2. The max count should be less than `isize::max_value()`.
     pub async fn add(&mut self, delta: isize) {
+        if delta <= 0 {
+            panic!("The argument `delta` of wait group `add` must be a positive number");
+        }
+
         let mut count = self.inner.count.lock().await;
         *count += delta;
 
         if *count >= isize::max_value() {
-            panic!("count is too large");
+            panic!("wait group count is too large");
         }
     }
 
+    /// Done count 1.
     pub async fn done(&mut self) {
         let mut count = self.inner.count.lock().await;
         *count -= 1;
@@ -102,5 +131,47 @@ impl Future for WaitGroup {
         }
 
         Poll::Pending
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    #[should_panic]
+    async fn add_zero() {
+        let mut wg = WaitGroup::new();
+        wg.add(0).await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn add_neg_one() {
+        let mut wg = WaitGroup::new();
+        wg.add(-1).await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn add_very_max() {
+        let mut wg = WaitGroup::new();
+        wg.add(isize::max_value() - 1).await;
+    }
+
+    #[tokio::test]
+    async fn add() {
+        let mut wg = WaitGroup::new();
+        wg.add(1).await;
+        wg.add(10).await;
+        assert_eq!(*wg.inner.count.lock().await, 12);
+    }
+
+    #[tokio::test]
+    async fn done() {
+        let mut wg = WaitGroup::new();
+        wg.done().await;
+        wg.done().await;
+        assert_eq!(*wg.inner.count.lock().await, -1);
     }
 }

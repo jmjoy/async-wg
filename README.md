@@ -19,7 +19,7 @@ $ cargo add -s async-wg
 
  ```rust
  #[tokio::main]
- async fn test_await() {
+ async fn main() {
      use async_wg::WaitGroup;
 
      // Create a new wait group.
@@ -42,7 +42,18 @@ $ cargo add -s async-wg
      wg.await;
  }
  ```
+ 
+## Benchmarks
+ 
+Simple benchmark comparison run on github actions.
 
- ## License
+Code: [benchs/main.rs](https://github.com/jmjoy/async-wg/blob/master/benches/main.rs)
+ 
+```text
+test bench_join_handle ... bench:      34,485 ns/iter (+/- 18,969)
+test bench_wait_group  ... bench:      36,916 ns/iter (+/- 7,555)
+```
 
- The Unlicense.
+## License
+
+The Unlicense.

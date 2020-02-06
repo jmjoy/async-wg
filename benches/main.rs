@@ -2,11 +2,11 @@
 
 extern crate test;
 
-use test::Bencher;
 use async_wg::WaitGroup;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use test::Bencher;
 
 #[tokio::test]
 async fn wait_group_version() {
