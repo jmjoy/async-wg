@@ -122,12 +122,12 @@ impl Future for WaitGroup {
     fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
         let mut count = self.inner.count.lock();
         let pin_count = Pin::new(&mut count);
-
         if let Poll::Ready(count) = pin_count.poll(cx) {
             if *count <= 0 {
                 return Poll::Ready(());
             }
         }
+        drop(count);
 
         let mut waker = self.inner.waker.lock();
         let pin_waker = Pin::new(&mut waker);
