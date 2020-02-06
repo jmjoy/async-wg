@@ -10,6 +10,7 @@ readme = "README.md"
 keywords = ["async", "future", "waitgroup"]
 
 [dependencies]
+futures-util = "0.3.3"
 
 [dev-dependencies]
 tokio = { version = "0.2.11", features = ["full"] }

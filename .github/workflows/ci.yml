@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - "**"
+
+env:
+  RUST_BACKTRACE: 1
+
+jobs:
+  bulid-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: Build
+        run: cargo build --verbose
+      - name: Test
+        run: cargo test --verbose
+
+  check-fmt-and-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - name: rustup component add rustfmt
+        run: rustup component add rustfmt
+      - name: Fmt
+        run: cargo fmt --all -- --check
+      - name: Doc
+        run: cargo doc

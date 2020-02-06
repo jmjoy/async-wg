@@ -9,12 +9,13 @@ async fn test_await() {
     let wg = WaitGroup::new();
 
     for _ in 0..10 {
-        let wg = wg.clone();
+        let mut wg = wg.clone();
+        wg.add(1).await;
         let count = count.clone();
 
         tokio::spawn(async move {
             count.fetch_add(1, Ordering::SeqCst);
-            drop(wg);
+            wg.done().await;
         });
     }
 
