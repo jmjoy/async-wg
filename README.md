@@ -38,7 +38,7 @@ $ cargo add -s async-wg
          });
      }
 
-     // Wait for done count is equal to done count.
+     // Wait for done count is equal to add count.
      wg.await;
  }
  ```
