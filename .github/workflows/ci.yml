@@ -16,17 +16,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
+      - run: rustup toolchain install nightly
       - name: Build
         run: cargo build --verbose
       - name: Test
         run: cargo test --verbose
+      - name: Bench
+        run: cargo +nightly bench --verbose
 
   check-fmt-and-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
-      - name: rustup component add rustfmt
-        run: rustup component add rustfmt
+      - run: rustup component add rustfmt
       - name: Fmt
         run: cargo fmt --all -- --check
       - name: Doc
