@@ -1,6 +1,6 @@
 [package]
 name = "async-wg"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["jmjoy <918734043@qq.com>"]
 edition = "2018"
 description = "Async version WaitGroup for RUST."
