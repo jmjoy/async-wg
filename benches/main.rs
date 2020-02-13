@@ -14,7 +14,7 @@ async fn wait_group_version() {
     let wg = WaitGroup::new();
 
     for _ in 0..10 {
-        let mut wg = wg.clone();
+        let wg = wg.clone();
         wg.add(1).await;
         let count = count.clone();
 

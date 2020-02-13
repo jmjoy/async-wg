@@ -84,8 +84,8 @@ impl WaitGroup {
     ///
     /// # Panic
     /// 1. The argument `delta` must be a positive number (> 0).
-    /// 2. The max count must be less than `isize::max_value()`.
-    pub async fn add(&mut self, delta: isize) {
+    /// 2. The max count must be less than `isize::max_value()` / 2.
+    pub async fn add(&self, delta: isize) {
         if delta <= 0 {
             panic!("The argument `delta` of wait group `add` must be a positive number");
         }
@@ -93,13 +93,13 @@ impl WaitGroup {
         let mut count = self.inner.count.lock().await;
         *count += delta;
 
-        if *count >= isize::max_value() {
+        if *count >= isize::max_value() / 2 {
             panic!("wait group count is too large");
         }
     }
 
     /// Done count 1.
-    pub async fn done(&mut self) {
+    pub async fn done(&self) {
         let mut count = self.inner.count.lock().await;
         *count -= 1;
 
@@ -146,27 +146,27 @@ mod tests {
     #[tokio::test]
     #[should_panic]
     async fn add_zero() {
-        let mut wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         wg.add(0).await;
     }
 
     #[tokio::test]
     #[should_panic]
     async fn add_neg_one() {
-        let mut wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         wg.add(-1).await;
     }
 
     #[tokio::test]
     #[should_panic]
     async fn add_very_max() {
-        let mut wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         wg.add(isize::max_value()).await;
     }
 
     #[tokio::test]
     async fn add() {
-        let mut wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         wg.add(1).await;
         wg.add(10).await;
         assert_eq!(*wg.inner.count.lock().await, 11);
@@ -174,7 +174,7 @@ mod tests {
 
     #[tokio::test]
     async fn done() {
-        let mut wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         wg.done().await;
         wg.done().await;
         assert_eq!(*wg.inner.count.lock().await, -2);
@@ -182,7 +182,7 @@ mod tests {
 
     #[tokio::test]
     async fn count() {
-        let mut wg = WaitGroup::new();
+        let wg = WaitGroup::new();
         assert_eq!(wg.count().await, 0);
         wg.add(10).await;
         assert_eq!(wg.count().await, 10);
