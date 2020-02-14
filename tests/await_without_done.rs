@@ -11,7 +11,7 @@ async fn test_await() {
     let wg = WaitGroup::new();
     wg.add(1).await;
 
-    for _ in 0..10 {
+    for _ in 0..3 {
         let wg = wg.clone();
         wg.add(1).await;
         let count = count.clone();
@@ -22,7 +22,7 @@ async fn test_await() {
         });
     }
 
-    match select(wg, Delay::new(Duration::from_secs(3))).await {
+    match select(wg, Delay::new(Duration::from_secs(1))).await {
         Either::Left(_) => assert!(false),
         Either::Right(_) => assert!(true),
     }

@@ -28,7 +28,7 @@ async fn test_await() {
 }
 
 #[tokio::test]
-async fn test_await_complex_1() {
+async fn test_await_complex() {
     let count = Arc::new(AtomicUsize::new(0));
     let wg = WaitGroup::new();
 
@@ -39,34 +39,25 @@ async fn test_await_complex_1() {
 
         tokio::spawn(async move {
             count.fetch_add(1, Ordering::SeqCst);
-            Delay::new(Duration::from_secs(1)).await;
+            Delay::new(Duration::from_millis(1)).await;
+            delay_for(Duration::from_millis(1)).await;
+
+            let wg0 = wg.clone();
+            wg0.add(1).await;
+
+            tokio::spawn(async move {
+                count.fetch_add(1, Ordering::SeqCst);
+                Delay::new(Duration::from_millis(1)).await;
+                delay_for(Duration::from_millis(1)).await;
+
+                wg0.done().await;
+            });
+
             wg.done().await;
         });
     }
 
     wg.await;
 
-    assert_eq!(count.load(Ordering::SeqCst), 10);
-}
-
-#[tokio::test]
-async fn test_await_complex_2() {
-    let count = Arc::new(AtomicUsize::new(0));
-    let wg = WaitGroup::new();
-
-    for _ in 0..10 {
-        let wg = wg.clone();
-        wg.add(1).await;
-        let count = count.clone();
-
-        tokio::spawn(async move {
-            count.fetch_add(1, Ordering::SeqCst);
-            delay_for(Duration::from_secs(1)).await;
-            wg.done().await;
-        });
-    }
-
-    wg.await;
-
-    assert_eq!(count.load(Ordering::SeqCst), 10);
+    assert_eq!(count.load(Ordering::SeqCst), 20);
 }
