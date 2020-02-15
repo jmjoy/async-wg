@@ -13,7 +13,7 @@
 //!     let wg = WaitGroup::new();
 //!
 //!     for _ in 0..10 {
-//!         let mut wg = wg.clone();
+//!         let wg = wg.clone();
 //!         // Add count n.
 //!         wg.add(1).await;
 //!
