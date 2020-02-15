@@ -17,31 +17,31 @@ $ cargo add -s async-wg
 
 ## Examples
 
- ```rust
- #[tokio::main]
- async fn main() {
-     use async_wg::WaitGroup;
+```rust
+#[tokio::main]
+async fn main() {
+    use async_wg::WaitGroup;
 
-     // Create a new wait group.
-     let wg = WaitGroup::new();
+    // Create a new wait group.
+    let wg = WaitGroup::new();
 
-     for _ in 0..10 {
-         let mut wg = wg.clone();
-         // Add count n.
-         wg.add(1).await;
+    for _ in 0..10 {
+        let wg = wg.clone();
+        // Add count n.
+        wg.add(1).await;
 
-         tokio::spawn(async move {
-             // Do some work.
+        tokio::spawn(async move {
+            // Do some work.
 
-             // Done count 1.
-             wg.done().await;
-         });
-     }
+            // Done count 1.
+            wg.done().await;
+        });
+    }
 
-     // Wait for done count is equal to add count.
-     wg.await;
- }
- ```
+    // Wait for done count is equal to add count.
+    wg.await;
+}
+```
  
 ## Benchmarks
  
