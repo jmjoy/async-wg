@@ -132,7 +132,9 @@ impl Future for WaitGroup {
         let mut waker = self.inner.waker.lock();
         let pin_waker = Pin::new(&mut waker);
         if let Poll::Ready(mut waker) = pin_waker.poll(cx) {
-            *waker = Some(cx.waker().clone());
+            let context_waker = cx.waker().clone();
+            context_waker.clone().wake();
+            *waker = Some(context_waker);
         }
 
         Poll::Pending

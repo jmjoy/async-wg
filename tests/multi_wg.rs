@@ -1,9 +1,9 @@
-use tokio::time::delay_for;
 use async_wg::WaitGroup;
-use std::time::Duration;
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::delay_for;
 
 #[tokio::test]
 async fn main() {
