@@ -28,6 +28,33 @@ async fn test_await() {
 }
 
 #[tokio::test]
+async fn test_await_empty() {
+    let wg = WaitGroup::new();
+    wg.await;
+}
+
+#[tokio::test]
+async fn test_await_add() {
+    let count = Arc::new(AtomicUsize::new(0));
+    let wg = WaitGroup::new();
+    wg.add(10).await;
+
+    for _ in 0..10 {
+        let wg = wg.clone();
+        let count = count.clone();
+
+        tokio::spawn(async move {
+            count.fetch_add(1, Ordering::SeqCst);
+            wg.done().await;
+        });
+    }
+
+    wg.await;
+
+    assert_eq!(count.load(Ordering::SeqCst), 10);
+}
+
+#[tokio::test]
 async fn test_await_complex() {
     let count = Arc::new(AtomicUsize::new(0));
     let wg = WaitGroup::new();
