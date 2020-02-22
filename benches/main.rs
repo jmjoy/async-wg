@@ -19,12 +19,13 @@ async fn wait_group_version() {
         let count = count.clone();
 
         tokio::spawn(async move {
+            println!("in spawn");
             count.fetch_add(1, Ordering::SeqCst);
             wg.done().await;
         });
     }
 
-    wg.await;
+    wg.wait().await;
 
     assert_eq!(count.load(Ordering::SeqCst), 10);
 }

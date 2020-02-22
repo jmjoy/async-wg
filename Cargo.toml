@@ -11,7 +11,8 @@ keywords = ["async", "future", "waitgroup"]
 
 [dependencies]
 futures-util = "0.3.3"
-
+tokio = { version = "0.2",features = ["full"] }
+futures="0.3"
 [dev-dependencies]
-tokio = { version = "0.2.11", features = ["full"] }
+
 futures-timer = "3.0.1"

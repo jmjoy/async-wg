@@ -22,7 +22,7 @@ async fn test_await() {
         });
     }
 
-    wg.await;
+    wg.wait().await;
 
     assert_eq!(count.load(Ordering::SeqCst), 10);
 }
@@ -30,7 +30,7 @@ async fn test_await() {
 #[tokio::test]
 async fn test_await_empty() {
     let wg = WaitGroup::new();
-    wg.await;
+    wg.wait().await;
 }
 
 #[tokio::test]
@@ -49,7 +49,7 @@ async fn test_await_add() {
         });
     }
 
-    wg.await;
+    wg.wait().await;
 
     assert_eq!(count.load(Ordering::SeqCst), 10);
 }
@@ -61,7 +61,7 @@ async fn test_await_complex() {
 
     for _ in 0..10 {
         let wg = wg.clone();
-        wg.add(1).await;
+        wg.add(2).await;
         let count = count.clone();
 
         tokio::spawn(async move {
@@ -70,7 +70,6 @@ async fn test_await_complex() {
             delay_for(Duration::from_millis(1)).await;
 
             let wg0 = wg.clone();
-            wg0.add(1).await;
 
             tokio::spawn(async move {
                 count.fetch_add(1, Ordering::SeqCst);
@@ -84,7 +83,7 @@ async fn test_await_complex() {
         });
     }
 
-    wg.await;
+    wg.wait().await;
 
     assert_eq!(count.load(Ordering::SeqCst), 20);
 }

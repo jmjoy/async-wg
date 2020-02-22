@@ -40,8 +40,8 @@ async fn main() {
         });
     }
 
-    a_wg.await;
-    b_wg.await;
+    a_wg.wait().await;
+    b_wg.wait().await;
 
     assert_eq!(a_count.load(Ordering::SeqCst), 10);
     assert_eq!(b_count.load(Ordering::SeqCst), 10);
