@@ -4,7 +4,7 @@
 //!
 //! ## Examples
 //!
-//! ```rust, no_run
+//! ```rust
 //! #[tokio::main]
 //! async fn main() {
 //!     use async_wg::WaitGroup;
@@ -13,7 +13,7 @@
 //!     let wg = WaitGroup::new();
 //!
 //!     for _ in 0..10 {
-//!         let wg = wg.clone();
+//!         let mut wg = wg.clone();
 //!         // Add count n.
 //!         wg.add(1).await;
 //!
@@ -26,7 +26,7 @@
 //!     }
 //!
 //!     // Wait for done count is equal to add count.
-//!     wg.await;
+//!     wg.wait().await;
 //! }
 //! ```
 //!
@@ -46,11 +46,11 @@
 //! The Unlicense.
 //!
 
-use futures_util::lock::Mutex;
-use std::future::Future;
-use std::pin::Pin;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::AtomicIsize;
 use std::sync::Arc;
-use std::task::{Context, Poll, Waker};
+use tokio::sync::oneshot;
+use tokio::sync::Mutex;
 
 #[derive(Clone)]
 /// Enables multiple tasks to synchronize the beginning or end of some computation.
@@ -59,8 +59,10 @@ pub struct WaitGroup {
 }
 
 struct Inner {
-    count: Mutex<isize>,
-    waker: Mutex<Option<Waker>>,
+    started: AtomicBool,
+    count: AtomicIsize,
+    sender: Mutex<Option<oneshot::Sender<()>>>,
+    receiver: Mutex<Option<oneshot::Receiver<()>>>,
 }
 
 impl WaitGroup {
@@ -72,10 +74,13 @@ impl WaitGroup {
     /// let wg = WaitGroup::new();
     /// ```
     pub fn new() -> WaitGroup {
+        let (sender, receiver) = tokio::sync::oneshot::channel();
         WaitGroup {
             inner: Arc::new(Inner {
-                count: Mutex::new(0),
-                waker: Mutex::new(None),
+                started: AtomicBool::new(false),
+                sender: Mutex::new(Some(sender)),
+                receiver: Mutex::new(Some(receiver)),
+                count: AtomicIsize::new(0),
             }),
         }
     }
@@ -83,59 +88,53 @@ impl WaitGroup {
     /// Add count n.
     ///
     /// # Panic
-    /// 1. The argument `delta` must be a positive number (> 0).
-    /// 2. The max count must be less than `isize::max_value()` / 2.
+    /// 1. The argument `delta` must be a non negative number (>= 0).
     pub async fn add(&self, delta: isize) {
-        if delta <= 0 {
+        if delta < 0 {
             panic!("The argument `delta` of wait group `add` must be a positive number");
         }
-
-        let mut count = self.inner.count.lock().await;
-        *count += delta;
-
-        if *count >= isize::max_value() / 2 {
-            panic!("wait group count is too large");
+        if self
+            .inner
+            .started
+            .load(std::sync::atomic::Ordering::Relaxed)
+        {
+            panic!("cannot add after started.");
         }
+        self.inner
+            .count
+            .fetch_add(delta, std::sync::atomic::Ordering::Release);
     }
 
     /// Done count 1.
     pub async fn done(&self) {
-        let mut count = self.inner.count.lock().await;
-        *count -= 1;
-
-        if *count <= 0 {
-            if let Some(waker) = &*self.inner.waker.lock().await {
-                waker.clone().wake();
-            }
+        let count = self
+            .inner
+            .count
+            .fetch_sub(1, std::sync::atomic::Ordering::Acquire);
+        // eprintln!("{} call done,count={}", self.name, count);
+        if count <= 0 {
+            panic!("done add not match");
+        }
+        if count == 1 {
+            let sender = self.inner.sender.lock().await.take().unwrap();
+            let _ = sender.send(());
         }
     }
 
     /// Get the inner count of `WaitGroup`, the primary count is `0`.
     pub async fn count(&self) -> isize {
-        *self.inner.count.lock().await
+        self.inner.count.load(std::sync::atomic::Ordering::Relaxed)
     }
-}
-
-impl Future for WaitGroup {
-    type Output = ();
-
-    fn poll(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Self::Output> {
-        let mut count = self.inner.count.lock();
-        let pin_count = Pin::new(&mut count);
-        if let Poll::Ready(count) = pin_count.poll(cx) {
-            if *count <= 0 {
-                return Poll::Ready(());
-            }
+    /// wait all done, if count() is zero ,returns immediately.
+    pub async fn wait(&self) {
+        self.inner
+            .started
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+        if self.inner.count.load(std::sync::atomic::Ordering::SeqCst) == 0 {
+            return;
         }
-        drop(count);
-
-        let mut waker = self.inner.waker.lock();
-        let pin_waker = Pin::new(&mut waker);
-        if let Poll::Ready(mut waker) = pin_waker.poll(cx) {
-            *waker = Some(cx.waker().clone());
-        }
-
-        Poll::Pending
+        let receiver = self.inner.receiver.lock().await.take().unwrap();
+        let _ = receiver.await;
     }
 }
 
@@ -143,50 +142,53 @@ impl Future for WaitGroup {
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    #[should_panic]
+    #[tokio::main]
+    #[test]
     async fn add_zero() {
-        let wg = WaitGroup::new();
+        let wg = WaitGroup::new("aa");
         wg.add(0).await;
-    }
-
-    #[tokio::test]
-    #[should_panic]
-    async fn add_neg_one() {
-        let wg = WaitGroup::new();
-        wg.add(-1).await;
-    }
-
-    #[tokio::test]
-    #[should_panic]
-    async fn add_very_max() {
-        let wg = WaitGroup::new();
-        wg.add(isize::max_value()).await;
+        //        wg.done().await;
+        wg.wait().await
     }
 
     #[tokio::test]
     async fn add() {
-        let wg = WaitGroup::new();
+        let wg = WaitGroup::new("aa");
         wg.add(1).await;
         wg.add(10).await;
-        assert_eq!(*wg.inner.count.lock().await, 11);
+        assert_eq!(wg.count().await, 11);
     }
 
     #[tokio::test]
+    #[should_panic]
     async fn done() {
-        let wg = WaitGroup::new();
+        let wg = WaitGroup::new("aa");
         wg.done().await;
-        wg.done().await;
-        assert_eq!(*wg.inner.count.lock().await, -2);
+        wg.done().await; //done次数超过了await
+        assert_eq!(wg.count().await, -2);
     }
 
-    #[tokio::test]
+    #[tokio::main]
+    #[test]
     async fn count() {
-        let wg = WaitGroup::new();
+        let wg = WaitGroup::new("aa");
         assert_eq!(wg.count().await, 0);
         wg.add(10).await;
         assert_eq!(wg.count().await, 10);
         wg.done().await;
         assert_eq!(wg.count().await, 9);
+    }
+    #[tokio::test]
+    async fn can_quit() {
+        let wg = WaitGroup::new("aa");
+        assert_eq!(wg.count().await, 0);
+        wg.add(1).await;
+        let wg2 = wg.clone();
+        tokio::spawn(async move {
+            println!("spawn run");
+            tokio::time::delay_for(tokio::time::Duration::from_millis(10)).await;
+            wg2.done().await;
+        });
+        wg.wait().await
     }
 }

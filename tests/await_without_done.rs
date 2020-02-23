@@ -1,6 +1,5 @@
 use async_wg::WaitGroup;
 use futures_timer::Delay;
-use futures_util::future::{select, Either};
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
 use std::{sync::Arc, time::Duration};
@@ -21,9 +20,9 @@ async fn test_await() {
             wg.done().await;
         });
     }
-
-    match select(wg, Delay::new(Duration::from_secs(1))).await {
-        Either::Left(_) => assert!(false),
-        Either::Right(_) => assert!(true),
+    use futures::*;
+    select! {
+        _=wg.wait().fuse()=> assert!(false),
+        _=Delay::new(Duration::from_secs(1)).fuse()=>assert!(true),
     }
 }
